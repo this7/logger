@@ -1,0 +1,27 @@
+{
+    "defer":
+    {
+        "name": "延时加载",
+        "value": false
+    },
+    "EnableOutputLog":
+    {
+        "name": "是否输出 SDK 日志",
+        "value": true
+    },
+    "LogPath":
+    {
+        "name": "日志输出目录",
+        "value": "temp/logger/"
+    },
+    "LogThreshold":
+    {
+        "name": "日志输出级别",
+        "value": 0
+    },
+    "LogThresholdArray":
+    {
+        "name": "日志输出级别（数组）",
+        "value": [0, 1, 2, 3, 4, 5, 6]
+    }
+}

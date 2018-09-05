@@ -16,42 +16,95 @@ use \Exception;
  * 日志管理
  */
 class logger {
-    // Singleton instance
+    /**
+     * 单例实例
+     * @var null
+     */
     public static $instance = NULL;
 
-    // Path to save log files
+    /**
+     * 保存日志文件的路径
+     * @var [type]
+     */
     public $_log_path;
 
-    // Level of logging
+    /**
+     * 日志级别
+     * @var integer
+     */
     public $_threshold = 0;
 
-    // Array of threshold levels to log
+    /**
+     * 记录错误阈值
+     * @var array
+     */
     public $_threshold_array = array();
 
-    // File permissions
+    /**
+     * 设置文件权限
+     * @var integer
+     */
     public $_file_permissions = 0644;
 
-    // Format of timestamp for log files
+    /**
+     * 日志文件的时间戳格式
+     * @var string
+     */
     public $_date_fmt = 'Y-m-d H:i:s';
 
-    // Filename prefix
+    /**
+     * 文件名前缀
+     * @var string
+     */
     public $_file_prefix = 'log-';
 
-    // Filename extension
+    /**
+     * 文件扩展名
+     * @var string
+     */
     public $_file_ext = 'log';
 
-    // Whether or not the logger can write to the log files
+    /**
+     * 日志记录器是否可以写入日志文件
+     * @var boolean
+     */
     public $_enabled = TRUE;
 
-    // Predefined logging levels
-    public $_levels = array('ERROR' => 1, 'DEBUG' => 2, 'INFO' => 3, 'ALL' => 4);
+    /**
+     * 日志信息
+     * @var array
+     */
+    public $log = [];
 
-    public function test($value = '') {
-        # code...
-    }
+    /**
+     * 预定义的日志级别
+     * @var array
+     */
+    public $_levels = array(
+        'ERROR'             => 1,
+        'WARNING'           => 2,
+        'SQL'               => 3,
+        'PARSE'             => 4,
+        'DEBUG'             => 5,
+        'INFO'              => 6,
+        'ALL'               => 7,
+        'NOTICE'            => 8,
+        'EXCEPTION'         => 9,
+        'CORE_ERROR'        => 16,
+        'CORE_WARNING'      => 32,
+        'COMPILE_ERROR'     => 64,
+        'COMPILE_WARNING'   => 128,
+        'USER_ERROR'        => 256,
+        'USER_WARNING'      => 512,
+        'USER_NOTICE'       => 1024,
+        'STRICT'            => 2048,
+        'RECOVERABLE_ERROR' => 4096,
+        'DEPRECATED'        => 8192,
+        'USER_DEPRECATED'   => 16384,
+    );
 
     public function __construct() {
-        // do nothing if output log is disabled
+        #如果输出日志被禁用，什么也不做
         if (!C('logger', 'EnableOutputLog')) {
             $this->_enabled = FALSE;
             return;
@@ -61,7 +114,7 @@ class logger {
         $this->_threshold       = C('logger', 'LogThreshold');
         $this->_threshold_array = C('logger', 'LogThresholdArray');
 
-        if (!file_exists($this->_log_path)) {
+        if (!is_dir($this->_log_path)) {
             mkdir($this->_log_path, 0755, TRUE);
         }
         if (!is_dir($this->_log_path) || !is_writable($this->_log_path)) {
@@ -79,7 +132,7 @@ class logger {
             return $this->writeLog($name, $arguments);
         }
 
-        throw new Exception("Call to undefined method logger::{$name}()", 1);
+        throw new Exception("调用未定义的方法日志记录器::{$name}()", 1);
     }
 
     public function getInstance() {
@@ -92,33 +145,54 @@ class logger {
 
     public function writeLog($level, $messages) {
         $result = array();
-
-        for ($i = 0, $size = count($messages); $i < $size; $i += 1) {
-            $message = $messages[$i];
-
-            if (is_array($message)) {
-                $message = json_encode($message, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if (is_array($messages)) {
+            foreach ($messages as $key => $value) {
+                $message = $value;
+                if (is_array($message)) {
+                    $message = to_json($message);
+                }
+                if (is_string($message) || is_numeric($message)) {
+                    $result[] = $message;
+                }
             }
-
-            if (is_string($message) || is_numeric($message)) {
-                $result[] = $message;
+        } else {
+            if (is_string($messages) || is_numeric($messages)) {
+                $result[] = $messages;
             }
         }
-
         $instance = $this->getInstance();
         $instance->write_log($level, implode(' ', $result) . "\n");
     }
 
-    // public clone method to prevent cloning of the instance of the *Singleton* instance.
+    /**
+     * 记录日志内容
+     *
+     * @param $message 错误
+     * @param string $level 级别
+     */
+    public function record($message, $level = self::ERROR) {
+        $this->log[] = date("[ c ]") . "{$level}: {$message}" . PHP_EOL;
+    }
+
+    /**
+     * 公共克隆方法，以防止克隆*Singleton*实例的实例。
+     * @Author   Sean       Yan
+     * @DateTime 2018-08-31
+     * @return   [type]     [description]
+     */
     public function __clone() {}
 
-    // public unserialize method to prevent unserializing of the *Singleton* instance.
+    /**
+     * ublic反序列化方法，以防止对*Singleton*实例的反序列化。
+     * @Author   Sean       Yan
+     * @DateTime 2018-08-31
+     */
     public function __wakeup() {}
 
     /**
-     * Write Log File
-     * @param  string $level The error level
-     * @param  string $msg   The error message
+     * 写日志文件
+     * @param  string $level 错误级别
+     * @param  string $msg   错误消息
      * @return bool
      */
     public function write_log($level, $msg) {
@@ -149,8 +223,8 @@ class logger {
 
         flock($fp, LOCK_EX);
 
-        // Instantiating DateTime with microseconds appended to initial date
-        // is needed for proper support of this format
+        //用微秒附加到初始日期实例化日期时间
+        //是正确支持这种格式所必需的
         if (strpos($this->_date_fmt, 'u') !== FALSE) {
             $microtime_full  = microtime(TRUE);
             $microtime_short = sprintf('%06d', ($microtime_full - floor($microtime_full)) * 1000000);
@@ -180,11 +254,11 @@ class logger {
     }
 
     /**
-     * Format the log line.
-     * @param  string $level   The error level
-     * @param  string $date    Formatted date string
-     * @param  string $message The log message
-     * @return string          Formatted log line with a new line character '\n' at the end
+     * 格式化日志行。
+     * @param字符串$level错误级别
+     * @param字符串$date格式化日期字符串
+     * @param字符串$消息日志消息
+     * @return字符串格式的日志行，末尾有一个新的行字符'\n'
      */
     protected function _format_line($level, $date, $message) {
         return "[{$date}][{$level}] {$message}\n";

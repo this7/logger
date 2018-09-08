@@ -223,8 +223,8 @@ class logger {
 
         flock($fp, LOCK_EX);
 
-        //用微秒附加到初始日期实例化日期时间
-        //是正确支持这种格式所必需的
+        #用微秒附加到初始日期实例化日期时间
+        #是正确支持这种格式所必需的
         if (strpos($this->_date_fmt, 'u') !== FALSE) {
             $microtime_full  = microtime(TRUE);
             $microtime_short = sprintf('%06d', ($microtime_full - floor($microtime_full)) * 1000000);
